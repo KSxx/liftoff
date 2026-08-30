@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Shapes
 import qs.Commons
 import "World.js" as World
+import "Model.js" as Model
 
 // A quiet, single-color world silhouette with upcoming launch sites marked
 // on it. The soonest launch gets a bright, slowly pulsing marker; every
@@ -11,12 +12,22 @@ import "World.js" as World
 Item {
   id: root
 
-  // Each entry: {key, name, lat, lon, isNext, label}
+  // Each entry: {key, lat, lon, isNext, label, launch}
   property var launches: []
-  property var hovered: null
+  property real nowMs: Date.now()
   property color foreground: Color.foreground
   property string fontFamily: Style.font.family
   readonly property color dim: Qt.darker(foreground, 1.55)
+
+  // Tracked by key, not object reference: launches[] is rebuilt wholesale on
+  // every refresh, and a raw reference would go stale (pointing at an
+  // object no longer in the array) with no further hover/exit event ever
+  // firing to clear it — a permanently stuck tooltip.
+  property string hoveredKey: ""
+  readonly property var hovered: {
+    for (var i = 0; i < launches.length; i++) if (launches[i].key === hoveredKey) return launches[i]
+    return null
+  }
 
   signal launchClicked(var launch)
 
@@ -75,7 +86,7 @@ Item {
     Item {
       id: marker
       required property var modelData
-      readonly property bool hot: root.hovered === modelData
+      readonly property bool hot: root.hoveredKey === modelData.key
 
       // A generous hit area around a small dot, so it stays clickable.
       width: 14; height: 14
@@ -97,8 +108,8 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onEntered: root.hovered = marker.modelData
-        onExited: if (root.hovered === marker.modelData) root.hovered = null
+        onEntered: root.hoveredKey = marker.modelData.key
+        onExited: if (root.hoveredKey === marker.modelData.key) root.hoveredKey = ""
         onClicked: root.launchClicked(marker.modelData)
       }
     }
@@ -123,7 +134,13 @@ Item {
     Text {
       id: tooltipText
       anchors.centerIn: parent
-      text: root.hovered ? root.hovered.label : ""
+      text: {
+        if (!root.hovered) return ""
+        var l = root.hovered.launch
+        var countdown = Model.countdownLabel(l.t0, root.nowMs)
+        var tail = countdown ? (" · " + countdown) : (l.dateLabel ? (" · ~" + l.dateLabel) : "")
+        return root.hovered.label + tail
+      }
       color: root.foreground
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption

@@ -46,14 +46,18 @@ Panel {
 
   // launches[] projected onto {lat, lon, isNext, label, launch} for the map,
   // skipping anything whose site isn't in LaunchSites.js.
+  //
+  // Deliberately excludes nowMs: this only needs to change when launches[]
+  // itself changes (a real refresh), not every clock tick. WorldMap tracks
+  // hover by this array's object identity, and rebuilding it once a second
+  // would orphan whatever marker the mouse is over — the map's tooltip
+  // computes its own live countdown from nowMs instead.
   readonly property var mapModel: {
     var out = []
     for (var i = 0; i < root.launches.length; i++) {
       var l = root.launches[i]
       if (l.lat === null || l.lon === null) continue
-      var countdown = Model.countdownLabel(l.t0, root.nowMs)
-      var tail = countdown ? (" · " + countdown) : (l.dateLabel ? (" · ~" + l.dateLabel) : "")
-      out.push({ key: l.id, lat: l.lat, lon: l.lon, isNext: l.isNext, label: l.name + tail, launch: l })
+      out.push({ key: l.id, lat: l.lat, lon: l.lon, isNext: l.isNext, label: l.name, launch: l })
     }
     return out
   }
@@ -216,6 +220,7 @@ Panel {
           WorldMap {
             width: parent.width
             launches: root.mapModel
+            nowMs: root.nowMs
             foreground: root.foreground
             fontFamily: root.fontFamily
             onLaunchClicked: function(item) { root.selectLaunch(item.launch) }
