@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "ksxx.liftoff",
+  "name": "Rocket Launches",
+  "version": "0.1.0",
+  "author": "KSxx",
+  "description": "Shows the next upcoming rocket launch on a stylized world map, right in the Omarchy bar.",
+  "license": "MIT",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Rocket Launches",
+    "description": "Compact countdown to the next rocket launch, with a world map of upcoming launch sites.",
+    "category": "Info",
+    "allowMultiple": false,
+    "defaults": {
+      "refreshIntervalSec": 300
+    },
+    "schema": [
+      {
+        "key": "refreshIntervalSec",
+        "type": "integer",
+        "label": "Refresh interval (seconds)",
+        "description": "How often to poll RocketLaunch.Live for updated launch data.",
+        "min": 60,
+        "max": 3600,
+        "step": 30,
+        "defaultValue": 300
+      }
+    ]
+  }
+}
