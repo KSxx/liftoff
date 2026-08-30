@@ -31,7 +31,7 @@ Item {
   Shape {
     anchors.fill: parent
     antialiasing: true
-    preferredRendererType: Shape.CurveRenderer
+    preferredRendererType: Shape.GeometryRenderer
     transform: Scale { xScale: root.sx; yScale: root.sy }
 
     ShapePath {
@@ -39,7 +39,7 @@ Item {
       strokeColor: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.28)
       strokeWidth: 0.35
       joinStyle: ShapePath.RoundJoin
-      fillRule: ShapePath.WindingFill
+      fillRule: ShapePath.OddEvenFill
       PathSvg { path: World.PATH }
     }
   }
