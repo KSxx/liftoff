@@ -57,7 +57,7 @@ Panel {
     for (var i = 0; i < root.launches.length; i++) {
       var l = root.launches[i]
       if (l.lat === null || l.lon === null) continue
-      out.push({ key: l.id, lat: l.lat, lon: l.lon, isNext: l.isNext, label: l.name, launch: l })
+      out.push({ key: String(l.id), lat: l.lat, lon: l.lon, isNext: l.isNext, label: l.name, launch: l })
     }
     return out
   }
