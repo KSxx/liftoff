@@ -44,14 +44,6 @@ Panel {
     return Model.barLabel(root.nextLaunch, root.nowMs)
   }
 
-  readonly property string tooltipText: {
-    if (root.offline && root.launches.length === 0)
-      return "Rocket Launches — can't reach RocketLaunch.Live"
-    if (!root.nextLaunch) return "Rocket Launches — no upcoming launch data"
-    var suffix = root.offline ? " (offline, showing last known data)" : ""
-    return root.nextLaunch.name + " — " + (root.nextLaunch.provider || "") + suffix
-  }
-
   // launches[] projected onto {lat, lon, isNext, label, launch} for the map,
   // skipping anything whose site isn't in LaunchSites.js.
   readonly property var mapModel: {

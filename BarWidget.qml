@@ -58,7 +58,11 @@ BarWidget {
     bar: root.bar
     text: panelLoader.item ? panelLoader.item.label : "🚀"
     horizontalMargin: 8.75
-    tooltipText: panelLoader.item ? panelLoader.item.tooltipText : ""
+    // Suppressed, not just left off: the panel opened by a click is the
+    // detail view, and (per omarchy.weather, the reference for this exact
+    // BarWidget+Panel pattern) a hover tooltip on top of that gets stuck
+    // showing after the click instead of being dismissed.
+    tooltipText: ""
 
     onPressed: function(b) {
       if (!root.bar) return
