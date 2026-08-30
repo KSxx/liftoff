@@ -1,5 +1,4 @@
 import QtQuick
-import qs.Commons
 import qs.Ui
 
 BarWidget {
@@ -53,12 +52,12 @@ BarWidget {
     }
   }
 
-  BarIconButton {
+  WidgetButton {
     id: button
     anchors.fill: parent
     bar: root.bar
     text: panelLoader.item ? panelLoader.item.label : "🚀"
-    slotSize: Style.bar.statusSlot
+    horizontalMargin: 8.75
     tooltipText: panelLoader.item ? panelLoader.item.tooltipText : ""
 
     onPressed: function(b) {
