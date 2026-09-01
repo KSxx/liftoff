@@ -24,24 +24,27 @@ Item {
   // sourced (Color.background/Color.foreground), never hardcoded hex, so
   // the map keeps following the active Omarchy theme like everything else.
   //
-  // "Lightened by ~N%" turned out to mean a linear blend toward white, not
-  // Qt.lighter()'s HSL-multiplicative factor — Qt.lighter(color, 1.06) is
-  // near a no-op on an already-near-black base (multiplying a tiny
-  // lightness by 1.06 is still tiny), which is why the land silhouette
-  // disappeared entirely against the popup's actual background (confirmed
-  // via debug log: Color.background #090e13 vs. the old mapLand #0a0f14 —
-  // a 1-unit difference, invisible). lightenToward() below blends linearly
-  // instead, which actually produces a visible step at any base lightness.
-  function lightenToward(c, fraction) {
+  // "Lightened by ~N%" turned out to mean a linear blend, not Qt.lighter()'s
+  // HSL-multiplicative factor (near a no-op on an already-near-black base).
+  // The first fix blended toward literal white, which read fine on the dark
+  // theme this was tuned against but turned out to be direction-blind: on a
+  // light theme the background is already near-white, so blending further
+  // toward white is just as invisible as Qt.lighter() was on near-black
+  // (confirmed live — land/coast were indistinguishable from the page
+  // background on a light Omarchy theme). blendToward() below steps toward
+  // `foreground` instead of a hardcoded end point — foreground is guaranteed
+  // by the theme to contrast with background in either direction, so a
+  // small step toward it is a visible step regardless of which one is dark.
+  function blendToward(c, target, fraction) {
     return Qt.rgba(
-      c.r + (1 - c.r) * fraction,
-      c.g + (1 - c.g) * fraction,
-      c.b + (1 - c.b) * fraction,
+      c.r + (target.r - c.r) * fraction,
+      c.g + (target.g - c.g) * fraction,
+      c.b + (target.b - c.b) * fraction,
       c.a
     )
   }
-  readonly property color mapLand: lightenToward(Color.background, 0.06)
-  readonly property color mapCoast: lightenToward(Color.background, 0.14)
+  readonly property color mapLand: blendToward(Color.background, foreground, 0.08)
+  readonly property color mapCoast: blendToward(Color.background, foreground, 0.14)
   readonly property color mapGrid: Qt.rgba(foreground.r, foreground.g, foreground.b, 0.055)
   readonly property color markerIdle: Qt.rgba(foreground.r, foreground.g, foreground.b, 0.55)
 
