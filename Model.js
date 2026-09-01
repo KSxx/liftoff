@@ -81,8 +81,20 @@ function firstLivestreamUrl(media) {
   return null
 }
 
-// Compact countdown for the bar pill and map markers, e.g. "3d", "58m", "Now".
-function countdownLabel(t0, nowMs) {
+// Shared tail for countdowns beyond the hour-level tiers: "3d" under two
+// weeks, "6w" under two months, "3mo" beyond that.
+function daySpanLabel(days) {
+  if (days < 14) return days + "d"
+  if (days < 60) return Math.floor(days / 7) + "w"
+  return Math.floor(days / 30) + "mo"
+}
+
+// Countdown formatter shared by the bar pill and the popup. Precision
+// scales with urgency: seconds/minutes inside the final hour (where it
+// actually matters), then whole hours only — no minute-level jitter, since
+// "14h" and "14h 32m" mean the same thing at that range — up to
+// coarsenAtHours, then day/week/month tiers.
+function formatCountdown(t0, nowMs, coarsenAtHours) {
   if (!t0) return null
   var target = Date.parse(t0)
   if (isNaN(target)) return null
@@ -93,9 +105,39 @@ function countdownLabel(t0, nowMs) {
   var minutes = Math.floor(diffSec / 60)
   if (minutes < 60) return minutes + "m"
   var hours = Math.floor(minutes / 60)
-  if (hours < 48) return hours + "h " + (minutes % 60) + "m"
-  var days = Math.floor(hours / 24)
-  return days + "d"
+  if (hours < coarsenAtHours) return hours + "h"
+  return daySpanLabel(Math.floor(hours / 24))
+}
+
+// Compact countdown for the popup (list rows, map tooltip, detail view),
+// e.g. "3d", "14h", "58m", "Now". Whole hours until two days out.
+function countdownLabel(t0, nowMs) {
+  return formatCountdown(t0, nowMs, 48)
+}
+
+// Countdown for the bar pill specifically: coarsens a day earlier than the
+// popup's, so the pill reads as a clean "2d" sooner rather than lingering
+// on hour-level detail for anything not actually close.
+function barCountdownLabel(t0, nowMs) {
+  return formatCountdown(t0, nowMs, 24)
+}
+
+// Full ticking H:MM:SS countdown for the hero header — this is the one
+// place in the panel that shows genuine seconds-level precision (everywhere
+// else deliberately coarsens per formatCountdown above, since minute/second
+// detail isn't useful when just scanning a list). Hours aren't padded, so
+// it grows naturally past 99h instead of truncating.
+function fullCountdownLabel(t0, nowMs) {
+  if (!t0) return null
+  var target = Date.parse(t0)
+  if (isNaN(target)) return null
+  var now = nowMs || Date.now()
+  var diffSec = Math.max(0, Math.round((target - now) / 1000))
+  var hours = Math.floor(diffSec / 3600)
+  var minutes = Math.floor((diffSec % 3600) / 60)
+  var seconds = diffSec % 60
+  function pad(n) { return (n < 10 ? "0" : "") + n }
+  return hours + ":" + pad(minutes) + ":" + pad(seconds)
 }
 
 // Whether T-0 is close enough that the bar pill should draw attention.
@@ -108,14 +150,53 @@ function isImminent(t0, nowMs) {
   return diffSec > -300 && diffSec < 3600
 }
 
+// 0..1 urgency signal for "how soon is this", used to ramp color/width from
+// a neutral tone toward the accent color. Full urgency inside the final
+// hour (matching isImminent's window), fully neutral from three days out;
+// 0 for anything without a usable countdown (TBD/date-only precision).
+function urgencyRatio(t0, nowMs) {
+  if (!t0) return 0
+  var target = Date.parse(t0)
+  if (isNaN(target)) return 0
+  var now = nowMs || Date.now()
+  var hoursRemaining = (target - now) / 3600000
+  return Math.max(0, Math.min(1, 1 - (hoursRemaining - 1) / 71))
+}
+
 function barLabel(launch, nowMs) {
   if (!launch) return "󱓞"
   if (launch.precision === "exact") {
-    var c = countdownLabel(launch.t0, nowMs)
+    var c = barCountdownLabel(launch.t0, nowMs)
     return c ? ("󱓞 " + c) : "󱓞"
   }
   if (launch.precision === "date" && launch.dateLabel) return "󱓞 ~" + launch.dateLabel
   return "󱓞 TBD"
+}
+
+// Short country form for the narrow SITE column, e.g. "United States" -> "US".
+// Small, static — only the countries LaunchSites.js's known sites actually
+// sit in. Unlisted countries just pass through unabbreviated.
+var COUNTRY_SHORT = {
+  "United States": "US",
+  "United States of America": "US",
+  "New Zealand": "NZ",
+  "India": "India",
+  "Norway": "Norway",
+  "Kazakhstan": "Kazakhstan",
+  "Russia": "Russia",
+  "Russian Federation": "Russia",
+  "China": "China",
+  "Japan": "Japan",
+  "South Korea": "South Korea",
+  "Republic of Korea": "South Korea",
+  "North Korea": "North Korea",
+  "France": "France",
+  "Brazil": "Brazil",
+  "Iran": "Iran"
+}
+function shortCountry(country) {
+  if (!country) return ""
+  return COUNTRY_SHORT[country] || country
 }
 
 // Local wall-clock time for the detail view, e.g. "Sun, 30 Aug · 11:26".
@@ -124,4 +205,23 @@ function localTimeLabel(t0) {
   var d = new Date(t0)
   if (isNaN(d.getTime())) return null
   return Qt.formatDateTime(d, "ddd, d MMM · HH:mm")
+}
+
+// Compact one-line variant for narrow columns, e.g. "Wed 09:46" — drops the
+// day-of-month/name, weekday + time is enough to disambiguate within the
+// one-week span the next-5 launches ever cover.
+function shortLocalTimeLabel(t0) {
+  if (!t0) return null
+  var d = new Date(t0)
+  if (isNaN(d.getTime())) return null
+  return Qt.formatDateTime(d, "ddd HH:mm")
+}
+
+// "just now" / "2 min ago" for the header's last-refresh meta line.
+function updatedAgoLabel(lastFetchMs, nowMs) {
+  if (!lastFetchMs) return null
+  var now = nowMs || Date.now()
+  var minutes = Math.floor((now - lastFetchMs) / 60000)
+  if (minutes < 1) return "just now"
+  return minutes + " min ago"
 }

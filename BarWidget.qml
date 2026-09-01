@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Ui
+import qs.Commons
 
 BarWidget {
   id: root
@@ -52,12 +53,27 @@ BarWidget {
     }
   }
 
+  // Soft accent tint behind the pill while the tracked launch is imminent
+  // (Model.isImminent's window, exposed as Panel.qml's `imminent`) — a
+  // "this one's close" cue at a glance, not an error/warning state, so it
+  // uses the accent color rather than the default urgent/warning tint.
+  Rectangle {
+    anchors.fill: button
+    radius: Style.cornerRadius
+    color: (panelLoader.item && panelLoader.item.imminent === true)
+           ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.13)
+           : "transparent"
+    Behavior on color { ColorAnimation { duration: 300 } }
+  }
+
   WidgetButton {
     id: button
     anchors.fill: parent
     bar: root.bar
     text: panelLoader.item ? panelLoader.item.label : "󱓞"
     horizontalMargin: 8.75
+    active: panelLoader.item ? panelLoader.item.imminent === true : false
+    activeColor: Color.accent
     // Suppressed, not just left off: the panel opened by a click is the
     // detail view, and (per omarchy.weather, the reference for this exact
     // BarWidget+Panel pattern) a hover tooltip on top of that gets stuck
