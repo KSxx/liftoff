@@ -1,9 +1,27 @@
+<div align="center">
+
 # Rocket Launches
 
-An Omarchy bar plugin that shows the next upcoming rocket launch on a
-stylized world map, right in the shell.
+<sub>An Omarchy bar plugin: live countdown to the next launch, the next 5
+upcoming missions, and a stylized world map of their launch sites — right
+in the shell.</sub>
 
-![Screenshot](screenshot.png)
+[Install](#install) · [Data source](#data-source) · [Security](#security)
+
+</div>
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <strong>Dark</strong><br>
+      <img src="screenshot-dark.png" alt="Rocket Launches panel on a dark Omarchy theme" width="100%">
+    </td>
+    <td align="center" width="50%">
+      <strong>Light</strong><br>
+      <img src="screenshot-light.png" alt="Rocket Launches panel on a light Omarchy theme (Catppuccin Latte)" width="100%">
+    </td>
+  </tr>
+</table>
 
 ## Status
 
@@ -12,8 +30,9 @@ the tracked launch (accent-tinted in the final hour before T-0); the popup
 lists the next 5 upcoming launches with a pin/watch toggle, a hero countdown
 header, and a world map (curved Natural Earth projection, no map tiles —
 launch sites plotted from local coordinates) that zooms in on hover. See
-`docs/DECISIONS.md` for the design decisions behind the original MVP and
-`docs/RESEARCH.md` for the API/plugin-platform research it's based on.
+[docs/DECISIONS.md](docs/DECISIONS.md) for the design decisions behind the
+original MVP and [docs/RESEARCH.md](docs/RESEARCH.md) for the API/plugin-
+platform research it's based on.
 
 ## Data source
 
@@ -67,3 +86,11 @@ This plugin runs unsandboxed inside `omarchy-shell` when enabled.
 - No background services outside the widget's own poll timer.
 - No user configuration is required outside the plugin's bar-widget
   settings.
+
+<div align="center">
+
+---
+
+[Decisions](docs/DECISIONS.md) · [Research](docs/RESEARCH.md) · [MIT License](LICENSE)
+
+</div>
