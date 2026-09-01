@@ -65,7 +65,7 @@ omarchy plugin add <actual-plugin-git-url> --enable --yes
 ## Update
 
 ```bash
-omarchy plugin update ksxx.liftoff
+omarchy plugin update ksxx.rocket-launches
 ```
 
 ## Validate from source

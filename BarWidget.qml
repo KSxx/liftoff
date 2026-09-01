@@ -4,7 +4,7 @@ import qs.Commons
 
 BarWidget {
   id: root
-  moduleName: "ksxx.liftoff"
+  moduleName: "ksxx.rocket-launches"
 
   function injectPanel() {
     var target = panelLoader.item

@@ -1,2 +1,6 @@
 *.swp
 .DS_Store
+
+# Private session/handoff notes — real name, personal email, and a private
+# Obsidian vault path. Kept locally, deliberately not part of the public repo.
+Arbeitsstand.md
