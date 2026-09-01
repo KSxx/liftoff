@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "ksxx.liftoff",
   "name": "Rocket Launches",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "KSxx",
   "description": "Shows the next upcoming rocket launch on a stylized world map, right in the Omarchy bar.",
   "license": "MIT",
