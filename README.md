@@ -68,6 +68,17 @@ omarchy plugin add https://github.com/KSxx/liftoff --enable --yes
 omarchy plugin update ksxx.liftoff
 ```
 
+## Remove
+
+```bash
+omarchy plugin remove ksxx.liftoff --yes
+```
+
+This disables the widget, removes it from the bar, and deletes the plugin's
+installed files. Its settings entry (refresh interval, pinned launch) is
+removed from `~/.config/omarchy/shell.json` along with it — nothing is left
+behind.
+
 ## Validate from source
 
 ```bash
