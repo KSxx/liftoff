@@ -40,7 +40,7 @@ Panel {
   // Bar pill text: rocket + compact countdown/date/TBD, or a clear "can't
   // reach the API" marker when there's no cached data to fall back to.
   readonly property string label: {
-    if (root.offline && root.launches.length === 0) return "🚀 !"
+    if (root.offline && root.launches.length === 0) return "󱓞 !"
     return Model.barLabel(root.nextLaunch, root.nowMs)
   }
 

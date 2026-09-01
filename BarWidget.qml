@@ -56,7 +56,7 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: panelLoader.item ? panelLoader.item.label : "🚀"
+    text: panelLoader.item ? panelLoader.item.label : "󱓞"
     horizontalMargin: 8.75
     // Suppressed, not just left off: the panel opened by a click is the
     // detail view, and (per omarchy.weather, the reference for this exact

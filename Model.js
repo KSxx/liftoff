@@ -109,13 +109,13 @@ function isImminent(t0, nowMs) {
 }
 
 function barLabel(launch, nowMs) {
-  if (!launch) return "🚀"
+  if (!launch) return "󱓞"
   if (launch.precision === "exact") {
     var c = countdownLabel(launch.t0, nowMs)
-    return c ? ("🚀 " + c) : "🚀"
+    return c ? ("󱓞 " + c) : "󱓞"
   }
-  if (launch.precision === "date" && launch.dateLabel) return "🚀 ~" + launch.dateLabel
-  return "🚀 TBD"
+  if (launch.precision === "date" && launch.dateLabel) return "󱓞 ~" + launch.dateLabel
+  return "󱓞 TBD"
 }
 
 // Local wall-clock time for the detail view, e.g. "Sun, 30 Aug · 11:26".
