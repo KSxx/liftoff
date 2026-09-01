@@ -4,7 +4,7 @@
   "name": "LiftOff",
   "version": "0.2.0",
   "author": "KSxx",
-  "description": "Shows the next upcoming rocket launch on a stylized world map, right in the Omarchy bar.",
+  "description": "Track the next five rocket launches from your Omarchy bar — live countdown, pin your favorite, and a stylized world map of each launch site.",
   "license": "MIT",
   "kinds": [
     "bar-widget"
