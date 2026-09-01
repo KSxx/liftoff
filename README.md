@@ -1,10 +1,10 @@
 <div align="center">
 
-# Rocket Launches
+# LiftOff
 
-<sub>An Omarchy bar plugin: live countdown to the next launch, the next 5
-upcoming missions, and a stylized world map of their launch sites — right
-in the shell.</sub>
+<sub>An Omarchy bar plugin: live countdown to the next rocket launch, the
+next 5 upcoming missions, and a stylized world map of their launch sites —
+right in the shell.</sub>
 
 [Install](#install) · [Data source](#data-source) · [Security](#security)
 
@@ -14,11 +14,11 @@ in the shell.</sub>
   <tr>
     <td align="center" width="50%">
       <strong>Dark</strong><br>
-      <img src="screenshot-dark.png" alt="Rocket Launches panel on a dark Omarchy theme" width="100%">
+      <img src="screenshot-dark.png" alt="LiftOff panel on a dark Omarchy theme" width="100%">
     </td>
     <td align="center" width="50%">
       <strong>Light</strong><br>
-      <img src="screenshot-light.png" alt="Rocket Launches panel on a light Omarchy theme (Catppuccin Latte)" width="100%">
+      <img src="screenshot-light.png" alt="LiftOff panel on a light Omarchy theme (Catppuccin Latte)" width="100%">
     </td>
   </tr>
 </table>
@@ -51,7 +51,7 @@ appear on the map. Pull requests adding confirmed slugs are welcome.
 Review the repository, then add the plugin:
 
 ```bash
-omarchy plugin add <actual-plugin-git-url>
+omarchy plugin add https://github.com/KSxx/liftoff
 ```
 
 Accept the prompt to enable the plugin during installation.
@@ -59,13 +59,13 @@ Accept the prompt to enable the plugin during installation.
 For an unattended install from a repository you already trust:
 
 ```bash
-omarchy plugin add <actual-plugin-git-url> --enable --yes
+omarchy plugin add https://github.com/KSxx/liftoff --enable --yes
 ```
 
 ## Update
 
 ```bash
-omarchy plugin update ksxx.rocket-launches
+omarchy plugin update ksxx.liftoff
 ```
 
 ## Validate from source

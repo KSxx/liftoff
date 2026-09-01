@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "ksxx.rocket-launches",
-  "name": "Rocket Launches",
+  "id": "ksxx.liftoff",
+  "name": "LiftOff",
   "version": "0.2.0",
   "author": "KSxx",
   "description": "Shows the next upcoming rocket launch on a stylized world map, right in the Omarchy bar.",
@@ -13,7 +13,7 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Rocket Launches",
+    "displayName": "LiftOff",
     "description": "Compact countdown to the next rocket launch, with a world map of upcoming launch sites.",
     "category": "Info",
     "allowMultiple": false,

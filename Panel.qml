@@ -14,8 +14,8 @@ import "Model.js" as Model
 // See docs/RESEARCH.md and docs/DECISIONS.md for why.
 Panel {
   id: root
-  moduleName: "ksxx.rocket-launches"
-  ipcTarget: "ksxx.rocket-launches"
+  moduleName: "ksxx.liftoff"
+  ipcTarget: "ksxx.liftoff"
   manageIpc: false
 
   // One row in the launch list. Built on CursorSurface (qs.Ui) so hover/
