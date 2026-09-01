@@ -5,8 +5,12 @@ stylized world map, right in the shell.
 
 ## Status
 
-Early development (bar icon + panel shell only — no live data yet, no map
-yet). See `docs/DECISIONS.md` for the design decisions behind this MVP and
+Feature-complete and in daily use. The bar pill shows a live countdown to
+the tracked launch (accent-tinted in the final hour before T-0); the popup
+lists the next 5 upcoming launches with a pin/watch toggle, a hero countdown
+header, and a world map (curved Natural Earth projection, no map tiles —
+launch sites plotted from local coordinates) that zooms in on hover. See
+`docs/DECISIONS.md` for the design decisions behind the original MVP and
 `docs/RESEARCH.md` for the API/plugin-platform research it's based on.
 
 ## Data source
