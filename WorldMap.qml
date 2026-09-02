@@ -31,20 +31,14 @@ Item {
   // light theme the background is already near-white, so blending further
   // toward white is just as invisible as Qt.lighter() was on near-black
   // (confirmed live — land/coast were indistinguishable from the page
-  // background on a light Omarchy theme). blendToward() below steps toward
-  // `foreground` instead of a hardcoded end point — foreground is guaranteed
-  // by the theme to contrast with background in either direction, so a
-  // small step toward it is a visible step regardless of which one is dark.
-  function blendToward(c, target, fraction) {
-    return Qt.rgba(
-      c.r + (target.r - c.r) * fraction,
-      c.g + (target.g - c.g) * fraction,
-      c.b + (target.b - c.b) * fraction,
-      c.a
-    )
-  }
-  readonly property color mapLand: blendToward(Color.background, foreground, 0.08)
-  readonly property color mapCoast: blendToward(Color.background, foreground, 0.14)
+  // background on a light Omarchy theme). Model.blendColor() below steps
+  // toward `foreground` instead of a hardcoded end point — foreground is
+  // guaranteed by the theme to contrast with background in either
+  // direction, so a small step toward it is a visible step regardless of
+  // which one is dark. (Shared with LaunchRow's countdownColor ramp in
+  // Panel.qml, rather than a second inline copy of the same lerp.)
+  readonly property color mapLand: Model.blendColor(Color.background, foreground, 0.08)
+  readonly property color mapCoast: Model.blendColor(Color.background, foreground, 0.14)
   readonly property color mapGrid: Qt.rgba(foreground.r, foreground.g, foreground.b, 0.055)
   readonly property color markerIdle: Qt.rgba(foreground.r, foreground.g, foreground.b, 0.55)
 
@@ -195,76 +189,56 @@ Item {
     }
   }
 
+  readonly property var trackedMarker: root.launches.find(function(l) { return l.isTracked })
+
   // Pulse ring behind the tracked launch's site — radius literally animates
   // 3px -> 14px (not a scale transform), per the map spec. width/height are
   // live bindings, so x/y (centered on the marker via width/2) stay
-  // correctly centered as the ring grows every frame.
-  Rectangle {
-    id: pulse
-    readonly property var next: root.launches.find(function(l) { return l.isTracked })
-    visible: next !== undefined
+  // correctly centered as the ring grows every frame. Two staggered
+  // instances (startDelay 0 and 1300ms — half the 2600ms period, so they
+  // stay in sync forever rather than drifting the way re-pausing every loop
+  // would) share this one definition instead of being two hand-duplicated
+  // Rectangles.
+  component PulseRing: Rectangle {
+    id: ring
+    property var markerData: null
+    property int startDelay: 0
+    visible: markerData !== undefined && markerData !== null
     radius: width / 2
     color: "transparent"
     border.color: Color.accent
     border.width: 0.9
-    x: visible ? root.px(next) - width / 2 : 0
-    y: visible ? root.py(next) - height / 2 : 0
+    x: visible ? root.px(markerData) - width / 2 : 0
+    y: visible ? root.py(markerData) - height / 2 : 0
 
     SequentialAnimation on width {
-      running: pulse.visible
-      loops: Animation.Infinite
-      NumberAnimation { from: 6; to: 28; duration: 2600; easing.type: Easing.OutQuad }
-    }
-    SequentialAnimation on height {
-      running: pulse.visible
-      loops: Animation.Infinite
-      NumberAnimation { from: 6; to: 28; duration: 2600; easing.type: Easing.OutQuad }
-    }
-    SequentialAnimation on opacity {
-      running: pulse.visible
-      loops: Animation.Infinite
-      NumberAnimation { from: 0.5; to: 0.0; duration: 2600; easing.type: Easing.OutQuad }
-    }
-  }
-
-  // Second ring, staggered 1300ms behind the first (one-shot pause, then an
-  // infinite loop with the same period — stays in sync forever rather than
-  // drifting the way re-pausing every loop would).
-  Rectangle {
-    id: pulse2
-    visible: pulse.visible
-    radius: width / 2
-    color: "transparent"
-    border.color: Color.accent
-    border.width: 0.9
-    x: visible ? root.px(pulse.next) - width / 2 : 0
-    y: visible ? root.py(pulse.next) - height / 2 : 0
-
-    SequentialAnimation on width {
-      running: pulse2.visible
-      PauseAnimation { duration: 1300 }
+      running: ring.visible
+      PauseAnimation { duration: ring.startDelay }
       SequentialAnimation {
         loops: Animation.Infinite
         NumberAnimation { from: 6; to: 28; duration: 2600; easing.type: Easing.OutQuad }
       }
     }
     SequentialAnimation on height {
-      running: pulse2.visible
-      PauseAnimation { duration: 1300 }
+      running: ring.visible
+      PauseAnimation { duration: ring.startDelay }
       SequentialAnimation {
         loops: Animation.Infinite
         NumberAnimation { from: 6; to: 28; duration: 2600; easing.type: Easing.OutQuad }
       }
     }
     SequentialAnimation on opacity {
-      running: pulse2.visible
-      PauseAnimation { duration: 1300 }
+      running: ring.visible
+      PauseAnimation { duration: ring.startDelay }
       SequentialAnimation {
         loops: Animation.Infinite
         NumberAnimation { from: 0.5; to: 0.0; duration: 2600; easing.type: Easing.OutQuad }
       }
     }
   }
+
+  PulseRing { id: pulse; markerData: root.trackedMarker; startDelay: 0 }
+  PulseRing { markerData: root.trackedMarker; startDelay: 1300 }
 
   // Uppercase pad/site label hanging off the tracked marker — persistent,
   // not hover-gated, since that marker is already the map's one highlighted
@@ -275,16 +249,16 @@ Item {
     z: 5
     textFormat: Text.PlainText
     text: {
-      if (!pulse.next) return ""
-      var l = pulse.next.launch
+      if (!pulse.markerData) return ""
+      var l = pulse.markerData.launch
       return (l.padName || l.locationName || "").toUpperCase()
     }
     color: Color.accent
     font.family: root.fontFamily
     font.pixelSize: Style.font.caption
     font.letterSpacing: 1
-    x: Math.max(0, Math.min(root.width - implicitWidth, (pulse.visible ? root.px(pulse.next) : 0) + 9))
-    y: Math.max(0, Math.min(root.height - implicitHeight, (pulse.visible ? root.py(pulse.next) : 0) - implicitHeight / 2 - 8))
+    x: Math.max(0, Math.min(root.width - implicitWidth, (pulse.visible ? root.px(pulse.markerData) : 0) + 9))
+    y: Math.max(0, Math.min(root.height - implicitHeight, (pulse.visible ? root.py(pulse.markerData) : 0) - implicitHeight / 2 - 8))
   }
 
   // No top-left corner readout: the pad name lives once, at the marker

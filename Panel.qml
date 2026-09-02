@@ -24,6 +24,39 @@ Panel {
   // caller from a centralized hover key) and current (persistent selection).
   // Doesn't bind into `root` directly (nested components don't inherit the
   // outer id scope) — every input comes in as an explicit property.
+  // One PROVIDER/VEHICLE/SITE/LOCAL cell in the detail strip below. Same
+  // "explicit properties, not outer id scope" shape as LaunchRow above —
+  // labelColor/valueColor/fontFamily come in per instance rather than
+  // reading root.* directly.
+  component DetailCell: Column {
+    property string label: ""
+    property string value: ""
+    property real widthRatio: 1
+    property color labelColor: Color.foreground
+    property color valueColor: Color.foreground
+    property string fontFamily: Style.font.family
+
+    width: (parent.width - parent.spacing * 3) / 4 * widthRatio
+    spacing: Style.space(3)
+
+    Text {
+      text: label
+      color: labelColor
+      font.family: fontFamily
+      font.pixelSize: Style.font.caption
+      font.letterSpacing: 1.5
+    }
+    Text {
+      width: parent.width
+      elide: Text.ElideRight
+      textFormat: Text.PlainText
+      text: value
+      color: valueColor
+      font.family: fontFamily
+      font.pixelSize: Style.font.body
+    }
+  }
+
   component LaunchRow: CursorSurface {
   id: row
 
@@ -55,12 +88,7 @@ Panel {
   // countdown goes fully accent regardless of urgency, matching the rail.
   readonly property color dimColor: Qt.darker(foreground, 1.7)
   readonly property real urgency: launch ? Model.urgencyRatio(launch.t0, nowMs) : 0
-  readonly property color countdownColor: current ? accent : Qt.rgba(
-    dimColor.r + (accent.r - dimColor.r) * urgency,
-    dimColor.g + (accent.g - dimColor.g) * urgency,
-    dimColor.b + (accent.b - dimColor.b) * urgency,
-    dimColor.a + (accent.a - dimColor.a) * urgency
-  )
+  readonly property color countdownColor: current ? accent : Model.blendColor(dimColor, accent, urgency)
 
   // Selected-row treatment: a left accent rail + a quiet accent-to-transparent
   // wash, instead of a flat highlight box — keeps the row itself uncluttered.
@@ -248,7 +276,12 @@ Panel {
     for (var i = 0; i < root.launches.length; i++) {
       var l = root.launches[i]
       if (l.lat === null || l.lon === null) continue
-      var tracked = root.watchedLaunchId !== "" ? (String(l.id) === root.watchedLaunchId) : l.isNext
+      // Same id-with-fallback shape as trackedLaunch above (not a plain
+      // watchedLaunchId equality check) — a pinned launch that's flown or
+      // slipped out of the free tier's next/5 window has to fall back to
+      // nextLaunch here too, or the map's pulse marker just disappears
+      // while the hero header/bar pill correctly retrack the new next one.
+      var tracked = root.trackedLaunch !== null && String(l.id) === String(root.trackedLaunch.id)
       out.push({ key: String(l.id), lat: l.lat, lon: l.lon, isTracked: tracked, label: l.name, launch: l })
     }
     return out
@@ -352,6 +385,11 @@ Panel {
     onExited: function(exitCode) {
       root.loading = false
       if (exitCode === 0) {
+        // A refresh can succeed via a different path (manual/periodic)
+        // while a retry from an earlier failure is still pending — without
+        // this, that stale retry fires 30s later and issues a redundant
+        // fetch even though nothing is failing anymore.
+        retryTimer.stop()
         root.applyLaunches(Model.parseLaunches(String(fetchStdout.text || "")))
         root.lastError = ""
         root.lastFetchMs = Date.now()
@@ -676,47 +714,38 @@ Panel {
               width: parent.width
               spacing: Style.space(16)
 
-              Column {
-                width: (parent.width - parent.spacing * 3) / 4
-                spacing: Style.space(3)
-                Text { text: "PROVIDER"; color: root.textLabel; font.family: root.fontFamily; font.pixelSize: Style.font.caption; font.letterSpacing: 1.5 }
-                Text { width: parent.width; elide: Text.ElideRight; textFormat: Text.PlainText; text: root.selected ? root.selected.provider : ""; color: root.textSecondary; font.family: root.fontFamily; font.pixelSize: Style.font.body }
+              DetailCell {
+                label: "PROVIDER"
+                value: root.selected ? root.selected.provider : ""
+                labelColor: root.textLabel
+                valueColor: root.textSecondary
+                fontFamily: root.fontFamily
               }
-              Column {
-                width: (parent.width - parent.spacing * 3) / 4
-                spacing: Style.space(3)
-                Text { text: "VEHICLE"; color: root.textLabel; font.family: root.fontFamily; font.pixelSize: Style.font.caption; font.letterSpacing: 1.5 }
-                Text { width: parent.width; elide: Text.ElideRight; textFormat: Text.PlainText; text: root.selected ? root.selected.vehicle : ""; color: root.textSecondary; font.family: root.fontFamily; font.pixelSize: Style.font.body }
+              DetailCell {
+                label: "VEHICLE"
+                value: root.selected ? root.selected.vehicle : ""
+                labelColor: root.textLabel
+                valueColor: root.textSecondary
+                fontFamily: root.fontFamily
               }
-              Column {
-                width: (parent.width - parent.spacing * 3) / 4 * 1.3
-                spacing: Style.space(3)
-                // Pad name is left out here — it's already shown as the
-                // accent site label on the map, repeating it just crowded
-                // this column into eliding.
-                Text { text: "SITE"; color: root.textLabel; font.family: root.fontFamily; font.pixelSize: Style.font.caption; font.letterSpacing: 1.5 }
-                Text {
-                  width: parent.width
-                  elide: Text.ElideRight
-                  textFormat: Text.PlainText
-                  color: root.textSecondary
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.body
-                  text: root.selected ? [root.selected.locationName, Model.shortCountry(root.selected.country)].filter(function(s) { return s }).join(", ") : ""
-                }
+              // Pad name is left out here — it's already shown as the
+              // accent site label on the map, repeating it just crowded
+              // this column into eliding.
+              DetailCell {
+                label: "SITE"
+                widthRatio: 1.3
+                value: root.selected ? [root.selected.locationName, Model.shortCountry(root.selected.country)].filter(function(s) { return s }).join(", ") : ""
+                labelColor: root.textLabel
+                valueColor: root.textSecondary
+                fontFamily: root.fontFamily
               }
-              Column {
-                width: (parent.width - parent.spacing * 3) / 4 * 0.7
-                spacing: Style.space(3)
-                Text { text: "LOCAL"; color: root.textLabel; font.family: root.fontFamily; font.pixelSize: Style.font.caption; font.letterSpacing: 1.5 }
-                Text {
-                  width: parent.width
-                  elide: Text.ElideRight
-                  color: root.textSecondary
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.body
-                  text: root.selected && root.selected.t0 ? (Model.shortLocalTimeLabel(root.selected.t0) || "") : ""
-                }
+              DetailCell {
+                label: "LOCAL"
+                widthRatio: 0.7
+                value: root.selected && root.selected.t0 ? (Model.shortLocalTimeLabel(root.selected.t0) || "") : ""
+                labelColor: root.textLabel
+                valueColor: root.textSecondary
+                fontFamily: root.fontFamily
               }
             }
 

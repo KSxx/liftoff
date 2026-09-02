@@ -21,6 +21,24 @@ function cap(s, max) {
   return s.length > max ? s.slice(0, max) : s
 }
 
+// Per-channel linear blend from `from` toward `to` by `fraction` (0..1),
+// alpha included — shared by every color ramp in the panel/map (the map's
+// land/coast tinting, the launch list's urgency-ramped countdown color).
+// Two independent inline copies of this used to exist and had already
+// drifted (one preserved the source alpha, one interpolated it); since
+// every caller here blends between two fully-opaque theme colors, the
+// difference is invisible in practice, but a `to` with a different alpha
+// than `from` now unambiguously interpolates it rather than depending on
+// which copy happened to be called.
+function blendColor(from, to, fraction) {
+  return Qt.rgba(
+    from.r + (to.r - from.r) * fraction,
+    from.g + (to.g - from.g) * fraction,
+    from.b + (to.b - from.b) * fraction,
+    from.a + (to.a - from.a) * fraction
+  )
+}
+
 // Turns the raw JSON body into a normalized, sorted list of launch objects.
 // Returns [] on anything unexpected rather than throwing — the caller is
 // responsible for treating an empty result plus a fetch error differently

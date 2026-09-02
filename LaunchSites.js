@@ -85,5 +85,10 @@ var SITES = {
 
 function forSlug(slug) {
   if (!slug) return null
-  return SITES[slug] || null
+  // A plain `SITES[slug] || null` lookup falls through to inherited
+  // Object.prototype members for slugs like "toString" or "__proto__" —
+  // those are truthy but have no .lat/.lon, which slips a NaN marker past
+  // the null-coordinate filter in Panel.qml's mapModel. hasOwnProperty
+  // restricts the lookup to SITES' own keys.
+  return Object.prototype.hasOwnProperty.call(SITES, slug) ? SITES[slug] : null
 }
