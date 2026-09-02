@@ -107,6 +107,7 @@ Panel {
       Text {
         width: parent.width
         elide: Text.ElideRight
+        textFormat: Text.PlainText
         text: row.launch ? row.launch.name : ""
         color: (row.hasCursor || row.current) ? row.textPrimary : row.textSecondary
         font.family: row.fontFamily
@@ -128,6 +129,7 @@ Panel {
         Text {
           width: parent.width - urgencyDot.width - parent.spacing
           elide: Text.ElideRight
+          textFormat: Text.PlainText
           color: row.countdownColor
           font.family: row.fontFamily
           font.pixelSize: Style.font.caption
@@ -283,10 +285,24 @@ Panel {
     else open()
   }
 
+  // The real response is a few KB (5 launches); this ceiling exists only to
+  // bound memory against a compromised/malicious endpoint, not because
+  // legitimate responses come close to it. `--max-filesize` aborts early
+  // when the server honestly declares an oversized Content-Length, but has
+  // no effect on a chunked response with no declared length — piping
+  // through `head -c` enforces the cap unconditionally regardless of what
+  // the server claims. `set -o pipefail` (bash-specific, hence `bash -c`
+  // rather than `sh -c`) keeps curl's own exit code visible through the
+  // pipe, so a network failure still surfaces as an offline state instead
+  // of being masked by head's own (near-always-zero) exit code.
+  readonly property int maxResponseBytes: 2097152
+
   function refresh() {
     if (fetchProcess.running) return
     root.loading = true
-    fetchProcess.command = ["curl", "-fsS", "--max-time", "10", "https://fdo.rocketlaunch.live/json/launches/next/5"]
+    fetchProcess.command = ["bash", "-c",
+      "set -o pipefail; curl -fsS --max-time 10 --max-filesize " + root.maxResponseBytes +
+      " https://fdo.rocketlaunch.live/json/launches/next/5 | head -c " + (root.maxResponseBytes + 1)]
     fetchProcess.running = true
   }
 
@@ -340,7 +356,7 @@ Panel {
         root.lastError = ""
         root.lastFetchMs = Date.now()
       } else {
-        root.lastError = String(fetchStderr.text || "").trim() || "RocketLaunch.Live unreachable"
+        root.lastError = Model.cap(String(fetchStderr.text || "").trim(), 300) || "RocketLaunch.Live unreachable"
         retryTimer.restart()
       }
     }
@@ -420,6 +436,7 @@ Panel {
               width: parent.width - Style.space(16)
               wrapMode: Text.WordWrap
               horizontalAlignment: Text.AlignHCenter
+              textFormat: Text.PlainText
               color: Color.urgent
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
@@ -493,6 +510,7 @@ Panel {
                 Text {
                   width: parent.width
                   elide: Text.ElideRight
+                  textFormat: Text.PlainText
                   text: root.trackedLaunch ? root.trackedLaunch.name : ""
                   color: root.textPrimary
                   font.family: root.fontFamily
@@ -502,6 +520,7 @@ Panel {
                 Text {
                   width: parent.width
                   elide: Text.ElideRight
+                  textFormat: Text.PlainText
                   text: root.trackedLaunch ? [root.trackedLaunch.provider, root.trackedLaunch.vehicle].filter(function(s) { return s }).join(" · ") : ""
                   color: root.textSecondary
                   font.family: root.fontFamily
@@ -531,6 +550,7 @@ Panel {
                   // character count changes (e.g. 9:12:40 -> 10:12:39).
                   width: 150
                   horizontalAlignment: Text.AlignRight
+                  textFormat: Text.PlainText
                   color: Color.accent
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.display
@@ -645,6 +665,7 @@ Panel {
               visible: root.selected !== root.trackedLaunch
               width: parent.width
               elide: Text.ElideRight
+              textFormat: Text.PlainText
               color: root.textSecondary
               font.family: root.fontFamily
               font.pixelSize: Style.font.bodySmall
@@ -659,13 +680,13 @@ Panel {
                 width: (parent.width - parent.spacing * 3) / 4
                 spacing: Style.space(3)
                 Text { text: "PROVIDER"; color: root.textLabel; font.family: root.fontFamily; font.pixelSize: Style.font.caption; font.letterSpacing: 1.5 }
-                Text { width: parent.width; elide: Text.ElideRight; text: root.selected ? root.selected.provider : ""; color: root.textSecondary; font.family: root.fontFamily; font.pixelSize: Style.font.body }
+                Text { width: parent.width; elide: Text.ElideRight; textFormat: Text.PlainText; text: root.selected ? root.selected.provider : ""; color: root.textSecondary; font.family: root.fontFamily; font.pixelSize: Style.font.body }
               }
               Column {
                 width: (parent.width - parent.spacing * 3) / 4
                 spacing: Style.space(3)
                 Text { text: "VEHICLE"; color: root.textLabel; font.family: root.fontFamily; font.pixelSize: Style.font.caption; font.letterSpacing: 1.5 }
-                Text { width: parent.width; elide: Text.ElideRight; text: root.selected ? root.selected.vehicle : ""; color: root.textSecondary; font.family: root.fontFamily; font.pixelSize: Style.font.body }
+                Text { width: parent.width; elide: Text.ElideRight; textFormat: Text.PlainText; text: root.selected ? root.selected.vehicle : ""; color: root.textSecondary; font.family: root.fontFamily; font.pixelSize: Style.font.body }
               }
               Column {
                 width: (parent.width - parent.spacing * 3) / 4 * 1.3
@@ -677,6 +698,7 @@ Panel {
                 Text {
                   width: parent.width
                   elide: Text.ElideRight
+                  textFormat: Text.PlainText
                   color: root.textSecondary
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.body
@@ -702,6 +724,7 @@ Panel {
               visible: root.selected && root.selected.missionDescription !== ""
               width: parent.width
               wrapMode: Text.WordWrap
+              textFormat: Text.PlainText
               color: root.textMeta
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
@@ -718,6 +741,7 @@ Panel {
                 id: footerTimeText
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
+                textFormat: Text.PlainText
                 color: root.textSecondary
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.caption

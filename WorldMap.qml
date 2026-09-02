@@ -273,6 +273,7 @@ Item {
     id: siteLabel
     visible: pulse.visible
     z: 5
+    textFormat: Text.PlainText
     text: {
       if (!pulse.next) return ""
       var l = pulse.next.launch
@@ -361,6 +362,7 @@ Item {
     Text {
       id: tooltipText
       anchors.centerIn: parent
+      textFormat: Text.PlainText
       text: {
         if (!root.hovered) return ""
         var l = root.hovered.launch

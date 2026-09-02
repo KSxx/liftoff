@@ -4,6 +4,23 @@
 .pragma library
 .import "LaunchSites.js" as Sites
 
+// The free endpoint is documented to return at most 5 launches; this is a
+// defensive ceiling against a compromised/malicious response claiming a much
+// larger `result` array, not a reflection of the real API contract.
+var MAX_LAUNCHES = 20
+var MAX_STRING_LEN = 300
+var MAX_SLUG_LEN = 120
+var MAX_DESCRIPTION_LEN = 1000
+
+// Truncates untrusted API strings before they reach the UI. Every field
+// pulled out of the API response goes through this (or a field-specific
+// variant below) — the JSON parser has no size limit of its own, so an
+// oversized string here is otherwise unbounded.
+function cap(s, max) {
+  if (typeof s !== "string") return ""
+  return s.length > max ? s.slice(0, max) : s
+}
+
 // Turns the raw JSON body into a normalized, sorted list of launch objects.
 // Returns [] on anything unexpected rather than throwing — the caller is
 // responsible for treating an empty result plus a fetch error differently
@@ -17,7 +34,7 @@ function parseLaunches(rawText) {
   }
   var list = parsed && Array.isArray(parsed.result) ? parsed.result : []
   var out = []
-  for (var i = 0; i < list.length; i++) {
+  for (var i = 0; i < list.length && i < MAX_LAUNCHES; i++) {
     var launch = normalizeLaunch(list[i])
     if (launch) out.push(launch)
   }
@@ -41,21 +58,26 @@ function normalizeLaunch(raw) {
   else if (raw.date_str || (raw.est_date && (raw.est_date.month || raw.est_date.year))) precision = "date"
 
   var site = Sites.forSlug(location.slug)
+  var slug = cap(raw.slug || "", MAX_SLUG_LEN)
 
   return {
     id: raw.id,
-    name: raw.name || (mission ? mission.name : "") || "Unnamed mission",
-    provider: provider.name || "",
-    vehicle: vehicle.name || "",
-    padName: pad.name || "",
-    locationName: location.name || "",
-    country: location.country || "",
-    locationSlug: location.slug || "",
-    missionDescription: raw.mission_description || (mission ? mission.description : "") || "",
+    name: cap(raw.name || (mission ? mission.name : "") || "Unnamed mission", MAX_STRING_LEN),
+    provider: cap(provider.name || "", MAX_STRING_LEN),
+    vehicle: cap(vehicle.name || "", MAX_STRING_LEN),
+    padName: cap(pad.name || "", MAX_STRING_LEN),
+    locationName: cap(location.name || "", MAX_STRING_LEN),
+    country: cap(location.country || "", MAX_STRING_LEN),
+    locationSlug: cap(location.slug || "", MAX_SLUG_LEN),
+    missionDescription: cap(raw.mission_description || (mission ? mission.description : "") || "", MAX_DESCRIPTION_LEN),
     t0: t0,
-    dateLabel: raw.date_str || "",
+    dateLabel: cap(raw.date_str || "", MAX_STRING_LEN),
     precision: precision,
-    detailUrl: raw.slug ? ("https://rocketlaunch.live/launch/" + raw.slug) : null,
+    // Built from our own fixed prefix, but still routed through the same
+    // host allowlist as livestreamUrl below (defense in depth — if this
+    // ever changes to trust an API-supplied URL directly, the allowlist is
+    // already there to catch it).
+    detailUrl: slug ? safeExternalUrl("https://rocketlaunch.live/launch/" + encodeURIComponent(slug), DETAIL_HOSTS) : null,
     livestreamUrl: firstLivestreamUrl(raw.media),
     lat: site ? site.lat : null,
     lon: site ? site.lon : null,
@@ -66,17 +88,52 @@ function normalizeLaunch(raw) {
   }
 }
 
+// Every URL handed to Qt.openUrlExternally (which shells out to xdg-open)
+// comes from this project's own construction (detailUrl) or from a field
+// the API controls outright (livestreamUrl's media entries) — either way,
+// treat it as untrusted and require an exact https:// host match against a
+// small allowlist rather than trusting an "http"-prefix check or the API's
+// own claimed URL. Matches the *entire* authority component verbatim
+// (before any '/', '?' or '#'), so an authority like "youtube.com@evil.com"
+// or "evil.com@youtube.com" fails the exact-match on either side of a
+// userinfo '@' rather than being resolved down to "the real host" the way a
+// browser would — over-rejecting a theoretical edge case is fine here,
+// silently opening the wrong host is not.
+var DETAIL_HOSTS = ["rocketlaunch.live", "www.rocketlaunch.live"]
+var MEDIA_HOSTS = ["www.youtube.com", "youtube.com", "youtu.be", "www.twitch.tv", "twitch.tv"]
+
+function safeExternalUrl(url, allowedHosts) {
+  if (typeof url !== "string") return null
+  var m = /^https:\/\/([^\/?#]+)(?:[\/?#]|$)/.exec(url)
+  if (!m) return null
+  var authority = m[1].toLowerCase()
+  if (authority.indexOf("@") !== -1) return null
+  for (var i = 0; i < allowedHosts.length; i++) {
+    if (authority === allowedHosts[i]) return url
+  }
+  return null
+}
+
 // The `media` field's exact shape when populated isn't documented; this
 // tries the field names that would plausibly carry a playable/watchable URL
-// and gives up cleanly rather than guessing at HTML.
+// and gives up cleanly rather than guessing at HTML. Every candidate is
+// still subject to safeExternalUrl's host allowlist — a plausible field
+// name is not the same as a trustworthy value, since `media` is entirely
+// API-controlled.
 function firstLivestreamUrl(media) {
-  if (!Array.isArray(media) || media.length === 0) return null
-  for (var i = 0; i < media.length; i++) {
+  if (!Array.isArray(media)) return null
+  for (var i = 0; i < media.length && i < 20; i++) {
     var m = media[i]
     if (!m) continue
-    if (typeof m === "string" && m.indexOf("http") === 0) return m
-    if (m.url && typeof m.url === "string") return m.url
-    if (m.youtube_id) return "https://www.youtube.com/watch?v=" + m.youtube_id
+    if (m.youtube_id && typeof m.youtube_id === "string") {
+      // YouTube video ids are [A-Za-z0-9_-]{11}; strip anything else so a
+      // crafted id can't smuggle extra query parameters into the URL we build.
+      var id = cap(m.youtube_id, 32).replace(/[^A-Za-z0-9_-]/g, "")
+      if (id) return "https://www.youtube.com/watch?v=" + id
+    }
+    var candidate = typeof m === "string" ? m : (typeof m.url === "string" ? m.url : null)
+    var safe = candidate ? safeExternalUrl(candidate, MEDIA_HOSTS) : null
+    if (safe) return safe
   }
   return null
 }

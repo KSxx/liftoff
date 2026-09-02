@@ -97,6 +97,16 @@ This plugin runs unsandboxed inside `omarchy-shell` when enabled.
 - No background services outside the widget's own poll timer.
 - No user configuration is required outside the plugin's bar-widget
   settings.
+- The API response is treated as untrusted input, not just as data from a
+  service we happen to trust: the fetch is hard-capped at 2 MiB regardless
+  of what the server declares (`curl --max-filesize` plus a `head -c` floor,
+  so a compromised or MITM'd endpoint can't force unbounded memory use),
+  every string field is length-capped before reaching the UI, and any URL
+  the panel can open externally (launch detail page, livestream link) is
+  checked against a fixed host allowlist before being handed to
+  `Qt.openUrlExternally` — an API-supplied URL to an arbitrary host or
+  scheme is dropped rather than opened. All text from the API is rendered
+  with `Text.PlainText`, so it can't be interpreted as rich-text markup.
 
 <div align="center">
 

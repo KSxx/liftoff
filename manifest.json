@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "ksxx.liftoff",
   "name": "LiftOff",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": "KSxx",
   "description": "Track the next five rocket launches from your Omarchy bar — live countdown, pin your favorite, and a stylized world map of each launch site.",
   "license": "MIT",
