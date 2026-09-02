@@ -1,0 +1,117 @@
+<div align="center">
+
+# LiftOff
+
+<sub>An Omarchy bar plugin: live countdown to the next rocket launch, the
+next 5 upcoming missions, and a stylized world map of their launch sites —
+right in the shell.</sub>
+
+[Install](#install) · [Data source](#data-source) · [Security](#security)
+
+</div>
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <strong>Dark</strong><br>
+      <img src="screenshot-dark.png" alt="LiftOff panel on a dark Omarchy theme" width="100%">
+    </td>
+    <td align="center" width="50%">
+      <strong>Light</strong><br>
+      <img src="screenshot-light.png" alt="LiftOff panel on a light Omarchy theme (Catppuccin Latte)" width="100%">
+    </td>
+  </tr>
+</table>
+
+## Status
+
+Feature-complete and in daily use. The bar pill shows a live countdown to
+the tracked launch (accent-tinted in the final hour before T-0); the popup
+lists the next 5 upcoming launches with a pin/watch toggle, a hero countdown
+header, and a world map (curved Natural Earth projection, no map tiles —
+launch sites plotted from local coordinates) that zooms in on hover. See
+[docs/DECISIONS.md](docs/DECISIONS.md) for the design decisions behind the
+original MVP and [docs/RESEARCH.md](docs/RESEARCH.md) for the API/plugin-
+platform research it's based on.
+
+## Data source
+
+Launch data comes from the free [RocketLaunch.Live](https://fdo.rocketlaunch.live/)
+`launches/next/5` endpoint — no API key required. Data by RocketLaunch.Live.
+
+The API doesn't include launch site coordinates, so the map plots sites from
+a small local lookup table (`LaunchSites.js`). Only a handful of entries
+have been confirmed against a real API response; the rest are best-effort
+guesses at the site-name-to-slug convention. A launch at an unlisted or
+mismatched site still shows up in the list and detail view — it just won't
+appear on the map. Pull requests adding confirmed slugs are welcome.
+
+## Install
+
+Review the repository, then add the plugin:
+
+```bash
+omarchy plugin add https://github.com/KSxx/liftoff
+```
+
+Accept the prompt to enable the plugin during installation.
+
+For an unattended install from a repository you already trust:
+
+```bash
+omarchy plugin add https://github.com/KSxx/liftoff --enable --yes
+```
+
+## Update
+
+```bash
+omarchy plugin update ksxx.liftoff
+```
+
+## Remove
+
+```bash
+omarchy plugin remove ksxx.liftoff --yes
+```
+
+This disables the widget, removes it from the bar, and deletes the plugin's
+installed files. Its settings entry (refresh interval, pinned launch) is
+removed from `~/.config/omarchy/shell.json` along with it — nothing is left
+behind.
+
+## Validate from source
+
+```bash
+omarchy plugin validate .
+```
+
+## Security
+
+This plugin runs unsandboxed inside `omarchy-shell` when enabled.
+
+- Network access: periodic `curl` requests to `https://fdo.rocketlaunch.live/`
+  to fetch upcoming launch data (no API key, no request body, no
+  authentication).
+- No files are read or written outside the plugin's own settings stored in
+  `~/.config/omarchy/shell.json` by the shell itself.
+- No background services outside the widget's own poll timer.
+- No user configuration is required outside the plugin's bar-widget
+  settings.
+- The API response is treated as untrusted input, not just as data from a
+  service we happen to trust: the fetch is hard-capped at 2 MiB regardless
+  of what the server declares (`curl --max-filesize` plus a `head -c` floor,
+  so a compromised or MITM'd endpoint can't force unbounded memory use),
+  every string field is length-capped before reaching the UI, and any URL
+  the panel can open externally (launch detail page, livestream link) is
+  checked against a fixed host allowlist before being handed to
+  `Qt.openUrlExternally` — an API-supplied URL to an arbitrary host or
+  scheme is dropped rather than opened. All text from the API is rendered
+  with `Text.PlainText`, so it can't be interpreted as rich-text markup.
+
+<div align="center">
+
+---
+
+[Decisions](docs/DECISIONS.md) · [Research](docs/RESEARCH.md) · [MIT License](LICENSE)
+
+</div>
