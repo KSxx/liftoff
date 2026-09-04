@@ -107,6 +107,12 @@ This plugin runs unsandboxed inside `omarchy-shell` when enabled.
   `Qt.openUrlExternally` — an API-supplied URL to an arbitrary host or
   scheme is dropped rather than opened. All text from the API is rendered
   with `Text.PlainText`, so it can't be interpreted as rich-text markup.
+- The `curl`/`head` fetch itself runs with a cleared, pinned environment
+  (`PATH` only, no inherited `BASH_ENV`, proxy variables, or anything else
+  that could redirect or hijack it), a hard deadline independent of curl's
+  own `--max-time` (escalating from a graceful stop to a forced one), and
+  its own process group so a stop or forced shutdown tears down the whole
+  pipeline instead of leaving `curl`/`head` running as orphans.
 
 <div align="center">
 

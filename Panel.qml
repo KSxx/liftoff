@@ -333,10 +333,27 @@ Panel {
   function refresh() {
     if (fetchProcess.running) return
     root.loading = true
+    // `set -m` (job control) puts the backgrounded `curl | head` pipeline in
+    // its own process group instead of bash's; the TERM trap then forwards
+    // any signal bash itself receives to that whole group via `kill -- -PID`
+    // (negative PID = process-group target), so curl and head are torn down
+    // together instead of surviving as orphans if only bash gets signaled —
+    // verified live (Quickshell's Process.signal() only ever reaches the
+    // direct child PID, confirmed by reading its actual source at
+    // git.outfoxxed.me/quickshell/quickshell). Backgrounding-then-waiting
+    // (rather than running the pipeline in the foreground) is what makes
+    // `set -m` assign it a fresh group at all without a controlling
+    // terminal; `wait` still surfaces the backgrounded job's exit status
+    // (and pipefail still applies inside it) as this script's own, so
+    // onExited's exitCode handling below is unchanged.
     fetchProcess.command = ["bash", "-c",
-      "set -o pipefail; curl -fsS --max-time 10 --max-filesize " + root.maxResponseBytes +
-      " https://fdo.rocketlaunch.live/json/launches/next/5 | head -c " + (root.maxResponseBytes + 1)]
+      "set -o pipefail; set -m; trap 'kill -TERM -- -$grouppid 2>/dev/null' TERM; " +
+      "{ curl -fsS --max-time 10 --max-filesize " + root.maxResponseBytes +
+      " https://fdo.rocketlaunch.live/json/launches/next/5 | head -c " + (root.maxResponseBytes + 1) +
+      "; } & grouppid=$!; wait $grouppid"]
     fetchProcess.running = true
+    fetchWatchdogTerm.restart()
+    fetchWatchdogKill.restart()
   }
 
   function applyLaunches(list) {
@@ -380,9 +397,23 @@ Panel {
     id: fetchProcess
     running: false
     command: []
+    // Never trust the inherited environment for what should be a fixed,
+    // predictable `bash -c "curl | head"` invocation: an attacker-influenced
+    // BASH_ENV would otherwise get sourced (and executed) by bash before our
+    // command even runs, and curl honors http_proxy/HTTPS_PROXY/ALL_PROXY by
+    // default, any of which could redirect or intercept the request. Pinning
+    // PATH to the two standard system directories also means `bash`, `curl`,
+    // and `head` always resolve to trusted binaries regardless of what the
+    // ambient environment's PATH contains. Verified live against the real
+    // endpoint (TLS still resolves fine with no other env vars set — curl
+    // falls back to its compiled-in default CA bundle).
+    clearEnvironment: true
+    environment: ({ "PATH": "/usr/bin:/bin" })
     stdout: StdioCollector { id: fetchStdout; waitForEnd: true }
     stderr: StdioCollector { id: fetchStderr; waitForEnd: true }
     onExited: function(exitCode) {
+      fetchWatchdogTerm.stop()
+      fetchWatchdogKill.stop()
       root.loading = false
       if (exitCode === 0) {
         // A refresh can succeed via a different path (manual/periodic)
@@ -398,6 +429,33 @@ Panel {
         retryTimer.restart()
       }
     }
+  }
+
+  // Independent, aggregate deadline for the whole fetch — not a substitute
+  // for curl's own `--max-time 10` (which only bounds curl itself), but a
+  // backstop against anything else that could hang: a wedged DNS resolver,
+  // or bash blocking on its own startup before curl ever runs. Escalates
+  // from a catchable SIGTERM first — giving refresh()'s trap a chance to
+  // tear down the whole curl/head group cleanly (verified live) — to an
+  // uncatchable SIGKILL a few seconds later only as a last resort, in case
+  // something is stuck ignoring TERM entirely. Quickshell's own
+  // destroy-time cleanup (only reachable if this widget is unloaded mid-
+  // fetch) kills just the direct bash process with an uncatchable SIGKILL
+  // and has no process-group awareness at all — a Quickshell Process
+  // library limitation, not something fixable from QML — so this watchdog
+  // is also what keeps that rare case bounded to a few seconds instead of
+  // leaving an orphaned curl/head running indefinitely.
+  Timer {
+    id: fetchWatchdogTerm
+    interval: 12000
+    repeat: false
+    onTriggered: if (fetchProcess.running) fetchProcess.signal(15) // SIGTERM
+  }
+  Timer {
+    id: fetchWatchdogKill
+    interval: 15000
+    repeat: false
+    onTriggered: if (fetchProcess.running) fetchProcess.signal(9) // SIGKILL
   }
 
   Timer {
